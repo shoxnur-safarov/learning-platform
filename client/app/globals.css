@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+body { @apply bg-slate-50 text-slate-900 antialiased; }
+.glass { @apply bg-white/70 backdrop-blur-lg border border-white/40; }
+.btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 font-semibold transition-all; }
+.btn-primary { @apply btn bg-brand-600 text-white hover:bg-brand-700 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-brand-500/30; }
+.btn-ghost { @apply btn border border-slate-200 hover:bg-slate-100; }
+.card { @apply rounded-2xl bg-white shadow-sm border border-slate-100 overflow-hidden; }
