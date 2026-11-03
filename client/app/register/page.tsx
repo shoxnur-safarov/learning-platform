@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { GraduationCap, User, Mail, Lock, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
 
 export default function RegisterPage() {
@@ -9,30 +10,95 @@ export default function RegisterPage() {
   const router = useRouter();
   const [f, setF] = useState({ name: '', email: '', password: '' });
   const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (f.password.length < 6) { setErr("Parol kamida 6 ta belgi bo'lishi kerak"); return; }
+    setBusy(true); setErr('');
     try { await register(f.name, f.email, f.password); router.push('/dashboard'); }
-    catch (e: any) { setErr(e.message); }
+    catch (e: any) { setErr(e.message); setBusy(false); }
   };
 
   return (
-    <div className="min-h-[80vh] grid place-items-center px-6 py-12">
-      <form onSubmit={submit} className="card p-8 w-full max-w-md space-y-5">
-        <h1 className="text-3xl font-extrabold">Ro'yxatdan o'tish</h1>
-        <p className="text-slate-500">Yangi hisob yarating va o'rganishni boshlang</p>
-        {err && <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm border border-red-100">{err}</div>}
-        <input required placeholder="Ismingiz" value={f.name} onChange={e=>setF({...f,name:e.target.value})}
-          className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-brand-500 outline-none transition-all"/>
-        <input required type="email" placeholder="Email" value={f.email} onChange={e=>setF({...f,email:e.target.value})}
-          className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-brand-500 outline-none transition-all"/>
-        <input required type="password" placeholder="Parol" value={f.password} onChange={e=>setF({...f,password:e.target.value})}
-          className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-brand-500 outline-none transition-all"/>
-        <button className="btn-primary w-full">Ro'yxatdan o'tish</button>
-        <p className="text-center text-sm text-slate-500">
-          Hisobingiz bormi? <Link href="/login" className="text-brand-600 font-semibold hover:underline">Kirish</Link>
-        </p>
-      </form>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-brand-50 grid place-items-center px-4 py-12">
+      <div className="w-full max-w-md">
+        {/* Logo */}
+        <div className="flex justify-center mb-8">
+          <Link href="/" className="flex items-center gap-2.5 font-extrabold text-2xl">
+            <span className="grid place-items-center w-11 h-11 rounded-2xl bg-brand-600 text-white shadow-lg shadow-brand-500/30">
+              <GraduationCap size={24} />
+            </span>
+            <span>Edu<span className="text-brand-600">Hub</span></span>
+          </Link>
+        </div>
+
+        <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/60 border border-slate-100 p-8">
+          <h1 className="text-2xl font-extrabold text-slate-900 mb-1">Hisob yaratish 🚀</h1>
+          <p className="text-slate-500 text-sm mb-7">Bepul ro'yxatdan o'ting va o'rganishni boshlang</p>
+
+          {/* Benefits */}
+          <div className="grid grid-cols-2 gap-2 mb-6">
+            {['Bepul kurslar', 'YouTube darslar', 'Sertifikat', 'Istalgan vaqt'].map(b => (
+              <div key={b} className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
+                <CheckCircle2 size={13} className="text-emerald-500 shrink-0" /> {b}
+              </div>
+            ))}
+          </div>
+
+          {err && (
+            <div className="mb-5 p-4 rounded-xl bg-red-50 text-red-600 text-sm border border-red-100 font-medium">
+              ⚠️ {err}
+            </div>
+          )}
+
+          <form onSubmit={submit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Ismingiz</label>
+              <div className="relative">
+                <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input required placeholder="Ali Valiyev" value={f.name}
+                  onChange={e => setF({ ...f, name: e.target.value })}
+                  className="input pl-10" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email</label>
+              <div className="relative">
+                <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input required type="email" placeholder="email@example.com" value={f.email}
+                  onChange={e => setF({ ...f, email: e.target.value })}
+                  className="input pl-10" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">Parol</label>
+              <div className="relative">
+                <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input required type="password" placeholder="Kamida 6 ta belgi" value={f.password}
+                  onChange={e => setF({ ...f, password: e.target.value })}
+                  className="input pl-10" />
+              </div>
+            </div>
+            <button type="submit" disabled={busy}
+              className="btn-primary w-full py-3.5 text-base shadow-lg shadow-brand-500/20 mt-2 disabled:opacity-60 disabled:cursor-not-allowed">
+              {busy ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Ro'yxatdan o'tish...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">Ro'yxatdan o'tish <ArrowRight size={18} /></span>
+              )}
+            </button>
+          </form>
+
+          <p className="text-center text-sm text-slate-500 mt-6">
+            Hisobingiz bormi?{' '}
+            <Link href="/login" className="text-brand-600 font-bold hover:underline">Kirish</Link>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

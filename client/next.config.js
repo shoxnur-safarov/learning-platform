@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: false, // Development vaqtida sekinlikni kamaytiradi
+  reactStrictMode: false,
+  experimental: {
+    missingSuspenseWithCSRBailout: false,
+  },
   images: { domains: ['picsum.photos', 'images.unsplash.com'] }
 };
 module.exports = nextConfig;
