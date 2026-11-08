@@ -5,12 +5,12 @@ import { Plus, Trash2, BookOpen, Users, ChevronDown, ChevronUp, Edit2, Eye, EyeO
 import { api, Course } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
 
-type Lesson = { id: number; title: string; content: string; video_url: string; order_index: number; is_preview: boolean; challenge?: string };
+type Lesson = { id: number; title: string; content: string; video_url: string; order_index: number; is_preview: boolean; challenge?: string; lesson_type: string };
 type CourseWithLessons = Course & { lessons: Lesson[] };
 type EnrollRequest = { id: number; status: string; created_at: string; user_id: number; user_name: string; user_email: string; course_id: number; course_title: string };
 
 const emptyCourse = { title: '', description: '', price: '0', image_url: '', level: "Boshlang'ich", duration_hours: '0' };
-const emptyLesson = { title: '', content: '', video_url: '', order_index: '0', is_preview: false, challenge: '' };
+const emptyLesson = { title: '', content: '', video_url: '', order_index: '0', is_preview: false, challenge: '', lesson_type: 'video' };
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
@@ -39,7 +39,7 @@ export default function AdminPage() {
 
   const reload = async () => {
     const [cs, us, en] = await Promise.all([
-      api<CourseWithLessons[]>('/courses'),
+      api<CourseWithLessons[]>('/admin/courses'),
       api<any[]>('/admin/users').catch(() => []),
       api<EnrollRequest[]>('/admin/enrollments').catch(() => [])
     ]);
@@ -91,7 +91,7 @@ export default function AdminPage() {
     setEditingLesson(l);
     setEditLessonForm({
       title: l.title, content: l.content || '', video_url: l.video_url || '',
-      order_index: String(l.order_index), is_preview: l.is_preview, challenge: l.challenge || ''
+      order_index: String(l.order_index), is_preview: l.is_preview, challenge: l.challenge || '', lesson_type: l.lesson_type || 'video'
     });
   };
 
@@ -200,9 +200,9 @@ export default function AdminPage() {
                             <div className="flex-1 min-w-0">
                               <p className="font-semibold text-slate-800 text-sm truncate">{l.title}</p>
                               <div className="flex items-center gap-2 mt-0.5">
-                                {l.video_url && <span className="text-xs text-brand-500 flex items-center gap-1"><Video size={11} /> Video</span>}
-                                {l.content && <span className="text-xs text-slate-400">· Qo'llanma</span>}
-                                {l.challenge && <span className="text-xs text-purple-500">· Mashq</span>}
+                                {l.lesson_type === 'video' && <span className="text-xs text-brand-500 flex items-center gap-1"><Video size={11} /> Video</span>}
+                                {l.lesson_type === 'guide' && <span className="text-xs text-emerald-500">📖 Qo'llanma</span>}
+                                {l.lesson_type === 'challenge' && <span className="text-xs text-amber-500">⚡ Mashq</span>}
                               </div>
                             </div>
                             <span className={`text-xs font-bold px-2 py-1 rounded-lg shrink-0 ${l.is_preview ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
@@ -220,15 +220,28 @@ export default function AdminPage() {
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Yangi dars qo'shish</p>
                       <div className="grid md:grid-cols-2 gap-3">
                         <input required placeholder="Dars nomi *" value={lessonForm.title} onChange={e => setLessonForm({ ...lessonForm, title: e.target.value })} className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-                        <input placeholder="YouTube URL" value={lessonForm.video_url} onChange={e => setLessonForm({ ...lessonForm, video_url: e.target.value })} className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-                        <input placeholder="Tartib raqami" type="number" min="0" value={lessonForm.order_index} onChange={e => setLessonForm({ ...lessonForm, order_index: e.target.value })} className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-                        <label className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer">
+                        <select value={lessonForm.lesson_type} onChange={e => setLessonForm({ ...lessonForm, lesson_type: e.target.value })} className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                          <option value="video">▶ Video dars</option>
+                          <option value="guide">📖 Qo'llanma</option>
+                          <option value="challenge">⚡ Mashq</option>
+                        </select>
+                        {lessonForm.lesson_type === 'video' && (
+                          <input placeholder="YouTube URL" value={lessonForm.video_url} onChange={e => setLessonForm({ ...lessonForm, video_url: e.target.value })} className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 md:col-span-2" />
+                        )}
+                        <label className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer md:col-span-2">
                           <input type="checkbox" checked={lessonForm.is_preview} onChange={e => setLessonForm({ ...lessonForm, is_preview: e.target.checked })} className="w-4 h-4 accent-blue-600" />
                           <span className="text-sm font-medium text-slate-700">Bepul ko'rish</span>
                         </label>
                       </div>
-                      <textarea placeholder="Qo'llanma matni (ixtiyoriy)" value={lessonForm.content} onChange={e => setLessonForm({ ...lessonForm, content: e.target.value })} rows={2} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-                      <textarea placeholder="Mashq / Challenge (ixtiyoriy)" value={lessonForm.challenge} onChange={e => setLessonForm({ ...lessonForm, challenge: e.target.value })} rows={2} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                      {lessonForm.lesson_type === 'video' && (
+                        <textarea placeholder="Tavsif (ixtiyoriy)" value={lessonForm.content} onChange={e => setLessonForm({ ...lessonForm, content: e.target.value })} rows={2} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                      )}
+                      {lessonForm.lesson_type === 'guide' && (
+                        <textarea placeholder="Qo'llanma matni *" value={lessonForm.content} onChange={e => setLessonForm({ ...lessonForm, content: e.target.value })} rows={5} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                      )}
+                      {lessonForm.lesson_type === 'challenge' && (
+                        <textarea placeholder="Mashq matni *" value={lessonForm.challenge} onChange={e => setLessonForm({ ...lessonForm, challenge: e.target.value })} rows={5} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                      )}
                       <button type="submit" className="btn-primary text-sm px-4 py-2.5"><Plus size={16} /> Dars qo'shish</button>
                     </form>
                   </div>
@@ -304,21 +317,29 @@ export default function AdminPage() {
             <form onSubmit={saveLesson} className="p-6 space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <input required placeholder="Dars nomi *" value={editLessonForm.title} onChange={e => setEditLessonForm({ ...editLessonForm, title: e.target.value })} className="px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400" />
-                <input placeholder="YouTube URL" value={editLessonForm.video_url} onChange={e => setEditLessonForm({ ...editLessonForm, video_url: e.target.value })} className="px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                <select value={editLessonForm.lesson_type} onChange={e => setEditLessonForm({ ...editLessonForm, lesson_type: e.target.value })} className="px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                  <option value="video">▶ Video dars</option>
+                  <option value="guide">📖 Qo'llanma</option>
+                  <option value="challenge">⚡ Mashq</option>
+                </select>
+                {editLessonForm.lesson_type === 'video' && (
+                  <input placeholder="YouTube URL" value={editLessonForm.video_url} onChange={e => setEditLessonForm({ ...editLessonForm, video_url: e.target.value })} className="px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400 md:col-span-2" />
+                )}
                 <input placeholder="Tartib raqami" type="number" min="0" value={editLessonForm.order_index} onChange={e => setEditLessonForm({ ...editLessonForm, order_index: e.target.value })} className="px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400" />
                 <label className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-white cursor-pointer">
                   <input type="checkbox" checked={editLessonForm.is_preview} onChange={e => setEditLessonForm({ ...editLessonForm, is_preview: e.target.checked })} className="w-4 h-4 accent-blue-600" />
-                  <span className="text-sm font-medium text-slate-700">Bepul ko'rish (preview)</span>
+                  <span className="text-sm font-medium text-slate-700">Bepul ko'rish</span>
                 </label>
               </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-600 mb-2">📖 Qo'llanma matni</label>
-                <textarea placeholder="Nazariy ma'lumot, tushuntirish..." value={editLessonForm.content} onChange={e => setEditLessonForm({ ...editLessonForm, content: e.target.value })} rows={4} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400" />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-600 mb-2">🎯 Mashq / Challenge</label>
-                <textarea placeholder="Vazifa, mashq yoki challenge..." value={editLessonForm.challenge} onChange={e => setEditLessonForm({ ...editLessonForm, challenge: e.target.value })} rows={4} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400" />
-              </div>
+              {editLessonForm.lesson_type === 'video' && (
+                <textarea placeholder="Tavsif (ixtiyoriy)" value={editLessonForm.content} onChange={e => setEditLessonForm({ ...editLessonForm, content: e.target.value })} rows={2} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              )}
+              {editLessonForm.lesson_type === 'guide' && (
+                <textarea placeholder="Qo'llanma matni *" value={editLessonForm.content} onChange={e => setEditLessonForm({ ...editLessonForm, content: e.target.value })} rows={6} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              )}
+              {editLessonForm.lesson_type === 'challenge' && (
+                <textarea placeholder="Mashq matni *" value={editLessonForm.challenge} onChange={e => setEditLessonForm({ ...editLessonForm, challenge: e.target.value })} rows={6} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              )}
               <div className="flex gap-3 pt-2">
                 <button type="submit" className="btn-primary flex-1 py-3"><Save size={18} /> Saqlash</button>
                 <button type="button" onClick={() => setEditingLesson(null)} className="btn-ghost px-6">Bekor</button>

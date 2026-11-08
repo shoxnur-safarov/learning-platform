@@ -9,8 +9,17 @@ router.use(authMiddleware, adminOnly);
 
 router.get('/courses', async (_req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM courses ORDER BY id DESC');
-    res.json(result.rows);
+    const courses = await pool.query('SELECT * FROM courses ORDER BY id DESC');
+    const lessons = await pool.query(
+      'SELECT id,course_id,title,content,video_url,order_index,is_preview,challenge,lesson_type FROM lessons ORDER BY order_index'
+    );
+    const lessonsByCourse: Record<number, any[]> = {};
+    for (const l of lessons.rows) {
+      if (!lessonsByCourse[l.course_id]) lessonsByCourse[l.course_id] = [];
+      lessonsByCourse[l.course_id].push(l);
+    }
+    const result = courses.rows.map(c => ({ ...c, lessons: lessonsByCourse[c.id] || [] }));
+    res.json(result);
   } catch (e: any) {
     res.status(500).json({ error: 'Server xatosi' });
   }
@@ -83,15 +92,22 @@ router.post('/courses/:courseId/lessons', async (req, res) => {
   const courseId = parseInt(req.params.courseId);
   if (isNaN(courseId)) return res.status(400).json({ error: 'Noto\'g\'ri ID' });
 
-  const { title, content, video_url, order_index, is_preview } = req.body;
+  const { title, content, video_url, is_preview, challenge, lesson_type } = req.body;
   if (!title || typeof title !== 'string' || title.trim().length < 2)
     return res.status(400).json({ error: 'Dars nomi kerak' });
 
   try {
+    // Avtomatik order_index: oxirgi darsdan keyin
+    const maxOrder = await pool.query(
+      'SELECT COALESCE(MAX(order_index), -1) as max_order FROM lessons WHERE course_id=$1',
+      [courseId]
+    );
+    const nextOrder = maxOrder.rows[0].max_order + 1;
+
     const result = await pool.query(
-      `INSERT INTO lessons (course_id,title,content,video_url,order_index,is_preview)
-       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [courseId, title.trim(), content?.trim() ?? '', video_url?.trim() ?? null, Number(order_index) || 0, is_preview ?? false]
+      `INSERT INTO lessons (course_id,title,content,video_url,order_index,is_preview,challenge,lesson_type)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+      [courseId, title.trim(), content?.trim() ?? '', video_url?.trim() ?? null, nextOrder, is_preview ?? false, challenge?.trim() ?? null, lesson_type ?? 'video']
     );
     res.status(201).json(result.rows[0]);
   } catch (e: any) {
@@ -104,13 +120,13 @@ router.put('/lessons/:id', async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) return res.status(400).json({ error: 'Noto\'g\'ri ID' });
 
-  const { title, content, video_url, order_index, is_preview } = req.body;
+  const { title, content, video_url, order_index, is_preview, challenge, lesson_type } = req.body;
 
   try {
     const result = await pool.query(
-      `UPDATE lessons SET title=$1,content=$2,video_url=$3,order_index=$4,is_preview=$5
-       WHERE id=$6 RETURNING *`,
-      [title?.trim(), content?.trim() ?? '', video_url?.trim() ?? null, Number(order_index) || 0, is_preview ?? false, id]
+      `UPDATE lessons SET title=$1,content=$2,video_url=$3,order_index=$4,is_preview=$5,challenge=$6,lesson_type=$7
+       WHERE id=$8 RETURNING *`,
+      [title?.trim(), content?.trim() ?? '', video_url?.trim() ?? null, Number(order_index) || 0, is_preview ?? false, challenge?.trim() ?? null, lesson_type ?? 'video', id]
     );
     if (!result.rows[0]) return res.status(404).json({ error: 'Dars topilmadi' });
     res.json(result.rows[0]);
