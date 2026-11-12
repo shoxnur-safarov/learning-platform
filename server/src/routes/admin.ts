@@ -92,7 +92,7 @@ router.post('/courses/:courseId/lessons', async (req, res) => {
   const courseId = parseInt(req.params.courseId);
   if (isNaN(courseId)) return res.status(400).json({ error: 'Noto\'g\'ri ID' });
 
-  const { title, content, video_url, is_preview, challenge, lesson_type } = req.body;
+  const { title, content, video_url, is_preview, challenge, solution, lesson_type } = req.body;
   if (!title || typeof title !== 'string' || title.trim().length < 2)
     return res.status(400).json({ error: 'Dars nomi kerak' });
 
@@ -105,9 +105,9 @@ router.post('/courses/:courseId/lessons', async (req, res) => {
     const nextOrder = maxOrder.rows[0].max_order + 1;
 
     const result = await pool.query(
-      `INSERT INTO lessons (course_id,title,content,video_url,order_index,is_preview,challenge,lesson_type)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [courseId, title.trim(), content?.trim() ?? '', video_url?.trim() ?? null, nextOrder, is_preview ?? false, challenge?.trim() ?? null, lesson_type ?? 'video']
+      `INSERT INTO lessons (course_id,title,content,video_url,order_index,is_preview,challenge,solution,lesson_type)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+      [courseId, title.trim(), content?.trim() ?? '', video_url?.trim() ?? null, nextOrder, is_preview ?? false, challenge?.trim() ?? null, solution?.trim() ?? null, lesson_type ?? 'video']
     );
     res.status(201).json(result.rows[0]);
   } catch (e: any) {
@@ -120,13 +120,13 @@ router.put('/lessons/:id', async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) return res.status(400).json({ error: 'Noto\'g\'ri ID' });
 
-  const { title, content, video_url, order_index, is_preview, challenge, lesson_type } = req.body;
+  const { title, content, video_url, order_index, is_preview, challenge, solution, lesson_type } = req.body;
 
   try {
     const result = await pool.query(
-      `UPDATE lessons SET title=$1,content=$2,video_url=$3,order_index=$4,is_preview=$5,challenge=$6,lesson_type=$7
-       WHERE id=$8 RETURNING *`,
-      [title?.trim(), content?.trim() ?? '', video_url?.trim() ?? null, Number(order_index) || 0, is_preview ?? false, challenge?.trim() ?? null, lesson_type ?? 'video', id]
+      `UPDATE lessons SET title=$1,content=$2,video_url=$3,order_index=$4,is_preview=$5,challenge=$6,solution=$7,lesson_type=$8
+       WHERE id=$9 RETURNING *`,
+      [title?.trim(), content?.trim() ?? '', video_url?.trim() ?? null, Number(order_index) || 0, is_preview ?? false, challenge?.trim() ?? null, solution?.trim() ?? null, lesson_type ?? 'video', id]
     );
     if (!result.rows[0]) return res.status(404).json({ error: 'Dars topilmadi' });
     res.json(result.rows[0]);

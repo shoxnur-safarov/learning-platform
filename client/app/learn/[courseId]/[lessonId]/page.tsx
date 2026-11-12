@@ -2,8 +2,56 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Lock, PlayCircle, BookOpen, Zap, CheckCircle2, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Lock, PlayCircle, BookOpen, Zap, CheckCircle2, Clock, Eye, EyeOff } from 'lucide-react';
 import { api, Course } from '@/lib/api';
+
+// Markdown-like renderer: kod bloklari, inline kod, bold, linklar
+function RichText({ text }: { text: string }) {
+  if (!text) return null;
+
+  // ``` kod bloklari
+  const parts = text.split(/(```[\s\S]*?```)/g);
+
+  return (
+    <div className="space-y-3 text-sm sm:text-base leading-relaxed">
+      {parts.map((part, i) => {
+        if (part.startsWith('```') && part.endsWith('```')) {
+          const lines = part.slice(3, -3).split('\n');
+          const lang = lines[0].trim();
+          const code = (lang && !lang.includes(' ') ? lines.slice(1) : lines).join('\n').trim();
+          return (
+            <div key={i} className="rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+              {lang && !lang.includes(' ') && (
+                <div className="bg-slate-800 px-4 py-1.5 text-xs text-slate-400 font-mono font-semibold">
+                  {lang}
+                </div>
+              )}
+              <pre className="bg-slate-900 text-green-300 p-4 overflow-x-auto text-xs sm:text-sm font-mono leading-relaxed">
+                <code>{code}</code>
+              </pre>
+            </div>
+          );
+        }
+
+        // Inline `kod` va **bold** va oddiy matn
+        const inlineParts = part.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
+        return (
+          <span key={i}>
+            {inlineParts.map((ip, j) => {
+              if (ip.startsWith('`') && ip.endsWith('`')) {
+                return <code key={j} className="bg-slate-100 text-red-500 px-1.5 py-0.5 rounded-md text-xs sm:text-sm font-mono">{ip.slice(1, -1)}</code>;
+              }
+              if (ip.startsWith('**') && ip.endsWith('**')) {
+                return <strong key={j} className="font-bold text-slate-900">{ip.slice(2, -2)}</strong>;
+              }
+              return <span key={j} className="text-slate-700 whitespace-pre-wrap">{ip}</span>;
+            })}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
 
 function toYouTubeEmbed(url: string): string | null {
   if (!url) return null;
@@ -29,15 +77,21 @@ export default function LearnPage() {
   const [completedIds, setCompletedIds] = useState<number[]>([]);
   const [error, setError] = useState('');
   const [completing, setCompleting] = useState(false);
+  const [showSolution, setShowSolution] = useState(false);
+  const [challengeDone, setChallengeDone] = useState(false);
 
   useEffect(() => {
+    if (!courseId || courseId === 'undefined') return;
     api<Course>(`/courses/${courseId}`).then(setCourse).catch(() => {});
     api<number[]>(`/lessons/${courseId}/completions/my`).then(setCompletedIds).catch(() => {});
   }, [courseId]);
 
   useEffect(() => {
+    if (!courseId || !lessonId || courseId === 'undefined' || lessonId === 'undefined') return;
     setLesson(null);
     setError('');
+    setShowSolution(false);
+    setChallengeDone(false);
     api(`/lessons/${courseId}/${lessonId}`)
       .then(setLesson)
       .catch((e) => setError(e.message));
@@ -88,10 +142,10 @@ export default function LearnPage() {
   const isCompleted = lesson.completed || completedIds.includes(Number(lessonId));
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8 grid lg:grid-cols-[300px_1fr] gap-8">
-      {/* Sidebar */}
-      <aside className="card p-5 h-fit lg:sticky lg:top-24 border-slate-200/60 shadow-sm">
-        <h3 className="font-bold text-xs uppercase text-slate-400 mb-4 tracking-widest">
+    <div className="max-w-7xl mx-auto px-0 sm:px-4 lg:px-6 py-0 sm:py-6 lg:py-8 grid lg:grid-cols-[300px_1fr] gap-6 lg:gap-8">
+      {/* Sidebar — mobile'da pastda, desktop'da chapda */}
+      <aside className="card p-4 sm:p-5 h-fit lg:sticky lg:top-24 border-slate-200/60 shadow-sm order-2 lg:order-1 mx-3 sm:mx-0 mb-4 sm:mb-0">
+        <h3 className="font-bold text-xs uppercase text-slate-400 mb-3 tracking-widest">
           Kurs darsliklari
         </h3>
         <div className="space-y-1">
@@ -141,16 +195,16 @@ export default function LearnPage() {
       </aside>
 
       {/* Asosiy kontent */}
-      <article>
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 mb-6 overflow-hidden">
-          <div className="px-8 pt-8 pb-6">
+      <article className="order-1 lg:order-2">
+        <div className="bg-white sm:rounded-3xl shadow-sm border-y sm:border border-slate-100 mb-4 sm:mb-6 overflow-hidden">
+          <div className="px-4 sm:px-8 pt-5 sm:pt-8 pb-5 sm:pb-6">
             {/* Type badge */}
-            <div className={`inline-flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-full border mb-4 ${meta.color}`}>
+            <div className={`inline-flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-full border mb-3 sm:mb-4 ${meta.color}`}>
               {meta.icon}
               {meta.label}
             </div>
 
-            <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-6">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 mb-4 sm:mb-6 leading-tight">
               {lesson.title}
             </h1>
 
@@ -158,61 +212,65 @@ export default function LearnPage() {
             {type === 'video' && (
               <div>
                 {embedUrl ? (
-                  <div className="aspect-video rounded-2xl overflow-hidden bg-slate-900 shadow-lg mb-6">
-                    <iframe
-                      src={embedUrl}
-                      className="w-full h-full"
-                      allowFullScreen
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      title={lesson.title}
-                    />
+                  <div className="-mx-4 sm:mx-0 sm:rounded-2xl overflow-hidden bg-slate-900 shadow-lg mb-4 sm:mb-6">
+                    <div className="aspect-video">
+                      <iframe
+                        src={embedUrl}
+                        className="w-full h-full"
+                        allowFullScreen
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        title={lesson.title}
+                      />
+                    </div>
                   </div>
                 ) : (
-                  <div className="aspect-video rounded-2xl bg-slate-100 flex flex-col items-center justify-center gap-3 mb-6">
-                    <PlayCircle size={48} className="text-slate-300" />
+                  <div className="aspect-video rounded-xl sm:rounded-2xl bg-slate-100 flex flex-col items-center justify-center gap-3 mb-4 sm:mb-6">
+                    <PlayCircle size={40} className="text-slate-300" />
                     <p className="text-slate-400 text-sm">Video mavjud emas</p>
                   </div>
                 )}
                 {lesson.content && (
-                  <p className="text-slate-600 leading-relaxed mt-4">{lesson.content}</p>
+                  <p className="text-slate-600 leading-relaxed text-sm sm:text-base">{lesson.content}</p>
                 )}
               </div>
             )}
 
             {/* QO'LLANMA */}
             {type === 'guide' && (
-              <div className="prose max-w-none text-slate-700 leading-relaxed whitespace-pre-line">
-                {lesson.content || <p className="text-slate-400 italic">Qo'llanma matni mavjud emas.</p>}
+              <div>
+                {lesson.content
+                  ? <RichText text={lesson.content} />
+                  : <p className="text-slate-400 italic text-sm">Qo'llanma matni mavjud emas.</p>}
               </div>
             )}
 
             {/* MASHQ */}
             {type === 'challenge' && (
               <div>
-                <div className="flex items-center gap-3 mb-6 p-4 bg-amber-50 rounded-2xl border border-amber-100">
-                  <Zap size={20} className="text-amber-500 shrink-0" />
+                <div className="flex items-start gap-3 mb-4 sm:mb-6 p-3 sm:p-4 bg-amber-50 rounded-xl sm:rounded-2xl border border-amber-100">
+                  <Zap size={18} className="text-amber-500 shrink-0 mt-0.5" />
                   <p className="text-amber-700 text-sm font-medium">
                     Quyidagi mashqni bajarib, bilimingizni tekshiring!
                   </p>
                 </div>
-                <div className="prose max-w-none text-slate-700 leading-relaxed whitespace-pre-line">
-                  {lesson.challenge || <p className="text-slate-400 italic">Mashq matni mavjud emas.</p>}
-                </div>
+                {lesson.challenge
+                  ? <RichText text={lesson.challenge} />
+                  : <p className="text-slate-400 italic text-sm">Mashq matni mavjud emas.</p>}
               </div>
             )}
           </div>
 
           {/* Complete button */}
-          <div className="px-8 pb-8">
+          <div className="px-4 sm:px-8 pb-5 sm:pb-8">
             {isCompleted ? (
               <div className="flex items-center gap-2 text-emerald-600 font-semibold text-sm">
-                <CheckCircle2 size={18} /> Dars tugatildi
+                <CheckCircle2 size={18} /> Dars tugatildi ✓
               </div>
             ) : (
               <button
                 onClick={handleComplete}
                 disabled={completing}
-                className="btn-primary text-sm"
+                className="btn-primary text-sm w-full sm:w-auto justify-center py-3"
               >
                 {completing ? (
                   <><Clock size={16} className="animate-spin" /> Saqlanmoqda...</>
@@ -224,20 +282,103 @@ export default function LearnPage() {
           </div>
         </div>
 
+        {/* ===== MASHQ BO'LIMI — dars tugatilgandan keyin ko'rinadi ===== */}
+        {isCompleted && lesson.challenge && (
+          <div className="bg-white sm:rounded-3xl shadow-sm border-y sm:border border-amber-200/60 mb-4 sm:mb-6 overflow-hidden">
+            <div className="px-4 sm:px-8 pt-5 sm:pt-7 pb-4 sm:pb-6">
+              {/* Header */}
+              <div className="flex items-center gap-3 mb-4 sm:mb-5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-600 grid place-items-center shrink-0">
+                  <Zap size={20} />
+                </div>
+                <div>
+                  <h2 className="font-extrabold text-base sm:text-lg text-slate-900">Dars mashqi</h2>
+                  <p className="text-xs sm:text-sm text-slate-500">Quyidagi topshiriqni bajaring, so'ng javobni tekshiring</p>
+                </div>
+              </div>
+
+              {/* Vazifa */}
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 mb-4">
+                <p className="text-xs font-bold text-amber-700 uppercase tracking-wider mb-2">📋 Vazifa</p>
+                <RichText text={lesson.challenge} />
+              </div>
+
+              {/* Javobni ko'rish toggle */}
+              {lesson.solution && (
+                <div className="mb-4">
+                  <button
+                    onClick={() => setShowSolution(v => !v)}
+                    className={`flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-xl border transition-all ${
+                      showSolution
+                        ? 'bg-slate-100 text-slate-700 border-slate-200'
+                        : 'bg-brand-50 text-brand-700 border-brand-200 hover:bg-brand-100'
+                    }`}
+                  >
+                    {showSolution ? <><EyeOff size={15} /> Javobni yashirish</> : <><Eye size={15} /> Javobni ko'rish</>}
+                  </button>
+
+                  {showSolution && (
+                    <div className="mt-3 bg-emerald-50 border border-emerald-200 rounded-2xl p-4 sm:p-5">
+                      <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2">✅ To'g'ri javob</p>
+                      <RichText text={lesson.solution} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Tekshirdim tugmasi */}
+              {challengeDone ? (
+                <div className="flex items-center gap-2 text-emerald-600 font-semibold text-sm">
+                  <CheckCircle2 size={18} /> Mashq tekshirildi — davom etishingiz mumkin!
+                </div>
+              ) : (
+                <button
+                  onClick={() => setChallengeDone(true)}
+                  className="btn-primary text-sm w-full sm:w-auto justify-center py-3 bg-amber-500 hover:bg-amber-600 shadow-amber-500/20"
+                >
+                  <CheckCircle2 size={16} /> Tekshirdim, davom etaman
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Navigatsiya */}
-        <div className="flex justify-between items-center gap-4">
+        <div className="flex justify-between items-center gap-3 px-4 sm:px-0 pb-4 sm:pb-0">
           {prev ? (
-            <Link href={`/learn/${courseId}/${prev.id}`} className="btn-ghost text-sm">
+            <Link href={`/learn/${courseId}/${prev.id}`} className="btn-ghost text-sm flex-1 sm:flex-none justify-center sm:justify-start">
               <ChevronLeft size={16} /> Oldingi
             </Link>
           ) : <span />}
           {next ? (
-            <button onClick={() => handleNext(next.id)} className="btn-primary text-sm">
-              Keyingi dars <ChevronRight size={16} />
-            </button>
+            <div className="flex flex-col items-end gap-1 flex-1 sm:flex-none">
+              {isCompleted && lesson.challenge && !challengeDone && (
+                <p className="text-xs text-amber-600 font-medium">⚡ Avval mashqni bajaring</p>
+              )}
+              <button
+                onClick={() => {
+                  if (isCompleted && lesson.challenge && !challengeDone) return;
+                  handleNext(next.id);
+                }}
+                className={`btn-primary text-sm w-full sm:w-auto justify-center transition-opacity ${
+                  isCompleted && lesson.challenge && !challengeDone ? 'opacity-40 cursor-not-allowed' : ''
+                }`}
+              >
+                Keyingi <ChevronRight size={16} />
+              </button>
+            </div>
           ) : (
-            <button onClick={async () => { await handleComplete(); router.push(`/courses/${courseId}`); }} className="btn-primary text-sm">
-              Kursni tugatish 🎉
+            <button
+              onClick={async () => {
+                if (isCompleted && lesson.challenge && !challengeDone) return;
+                await handleComplete();
+                router.push(`/courses/${courseId}`);
+              }}
+              className={`btn-primary text-sm flex-1 sm:flex-none justify-center ${
+                isCompleted && lesson.challenge && !challengeDone ? 'opacity-40 cursor-not-allowed' : ''
+              }`}
+            >
+              Tugatish 🎉
             </button>
           )}
         </div>

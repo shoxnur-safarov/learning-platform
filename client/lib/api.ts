@@ -24,6 +24,6 @@ export async function api<T = any>(path: string, opts: RequestInit = {}): Promis
 export type Course = {
   id: number; title: string; description: string; price: string;
   image_url: string; level: string; duration_hours: number;
-  lessons?: { id: number; title: string; content: string; video_url: string; order_index: number; is_preview: boolean; lesson_type: string; challenge?: string }[];
+  lessons?: { id: number; title: string; content: string; video_url: string; order_index: number; is_preview: boolean; lesson_type: string; challenge?: string; solution?: string }[];
 };
 export type User = { id: number; name: string; email: string; role: string };

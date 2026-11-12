@@ -89,6 +89,7 @@ router.post('/:courseId/:lessonId/complete', authMiddleware, async (req: AuthReq
 // Kurs uchun barcha tugatilgan darslar
 router.get('/:courseId/completions/my', authMiddleware, async (req: AuthRequest, res) => {
   const courseId = parseInt(req.params.courseId);
+  if (isNaN(courseId)) return res.status(400).json({ error: 'Noto\'g\'ri ID' });
   const userId = req.user!.id;
 
   try {

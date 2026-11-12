@@ -5,12 +5,12 @@ import { Plus, Trash2, BookOpen, Users, ChevronDown, ChevronUp, Edit2, Eye, EyeO
 import { api, Course } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
 
-type Lesson = { id: number; title: string; content: string; video_url: string; order_index: number; is_preview: boolean; challenge?: string; lesson_type: string };
+type Lesson = { id: number; title: string; content: string; video_url: string; order_index: number; is_preview: boolean; challenge?: string; solution?: string; lesson_type: string };
 type CourseWithLessons = Course & { lessons: Lesson[] };
 type EnrollRequest = { id: number; status: string; created_at: string; user_id: number; user_name: string; user_email: string; course_id: number; course_title: string };
 
 const emptyCourse = { title: '', description: '', price: '0', image_url: '', level: "Boshlang'ich", duration_hours: '0' };
-const emptyLesson = { title: '', content: '', video_url: '', order_index: '0', is_preview: false, challenge: '', lesson_type: 'video' };
+const emptyLesson = { title: '', content: '', video_url: '', order_index: '0', is_preview: false, challenge: '', solution: '', lesson_type: 'video' };
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
@@ -91,7 +91,7 @@ export default function AdminPage() {
     setEditingLesson(l);
     setEditLessonForm({
       title: l.title, content: l.content || '', video_url: l.video_url || '',
-      order_index: String(l.order_index), is_preview: l.is_preview, challenge: l.challenge || '', lesson_type: l.lesson_type || 'video'
+      order_index: String(l.order_index), is_preview: l.is_preview, challenge: l.challenge || '', solution: l.solution || '', lesson_type: l.lesson_type || 'video'
     });
   };
 
@@ -127,33 +127,34 @@ export default function AdminPage() {
   if (user?.role !== 'admin') return <div className="p-20 text-center text-slate-500 font-bold">Ruxsat yo'q.</div>;
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-12">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-extrabold text-slate-900">Admin Panel</h1>
-        {msg && <span className="px-4 py-2 bg-emerald-50 text-emerald-700 font-semibold rounded-xl text-sm">{msg}</span>}
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900">Admin Panel</h1>
+        {msg && <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 font-semibold rounded-xl text-xs sm:text-sm">{msg}</span>}
       </div>
 
-      {/* Tablar */}
-      <div className="flex gap-3 mb-8 flex-wrap">
-        <button onClick={() => setTab('courses')} className={`btn px-5 py-3 ${tab === 'courses' ? 'bg-brand-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}>
-          <BookOpen size={18} /> Kurslar ({courses.length})
+      {/* Tablar — mobile'da pastki navigation bar */}
+      <div className="flex mb-6 bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+        <button onClick={() => setTab('courses')} className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-3 sm:py-3.5 text-xs sm:text-sm font-semibold transition-colors relative ${tab === 'courses' ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
+          <BookOpen size={16} /> <span>Kurslar</span> <span className="hidden sm:inline">({courses.length})</span>
         </button>
-        <button onClick={() => setTab('enrollments')} className={`btn px-5 py-3 relative ${tab === 'enrollments' ? 'bg-brand-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}>
-          <Bell size={18} /> So'rovlar ({enrollments.length})
-          {pendingCount > 0 && <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full grid place-items-center">{pendingCount}</span>}
+        <button onClick={() => setTab('enrollments')} className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-3 sm:py-3.5 text-xs sm:text-sm font-semibold transition-colors relative border-x border-slate-200 ${tab === 'enrollments' ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
+          <Bell size={16} />
+          <span>So'rovlar</span>
+          {pendingCount > 0 && <span className="absolute top-1.5 right-1.5 sm:static sm:ml-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full grid place-items-center">{pendingCount}</span>}
         </button>
-        <button onClick={() => setTab('users')} className={`btn px-5 py-3 ${tab === 'users' ? 'bg-brand-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}>
-          <Users size={18} /> Foydalanuvchilar ({users.length})
+        <button onClick={() => setTab('users')} className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-3 sm:py-3.5 text-xs sm:text-sm font-semibold transition-colors ${tab === 'users' ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
+          <Users size={16} /> <span>Userlar</span>
         </button>
       </div>
 
       {/* ===== KURSLAR ===== */}
       {tab === 'courses' && (
         <>
-          <form onSubmit={saveCourse} className="card p-6 space-y-4 mb-8 bg-slate-50/50">
-            <h2 className="font-bold text-lg">{editingCourse ? '✏️ Kursni tahrirlash' : '➕ Yangi kurs'}</h2>
-            <div className="grid md:grid-cols-2 gap-4">
+          <form onSubmit={saveCourse} className="card p-4 sm:p-6 space-y-4 mb-6 bg-slate-50/50">
+            <h2 className="font-bold text-base sm:text-lg">{editingCourse ? '✏️ Kursni tahrirlash' : '➕ Yangi kurs'}</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <input required placeholder="Kurs nomi *" value={courseForm.title} onChange={e => setCourseForm({ ...courseForm, title: e.target.value })} className="px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400" />
               <input placeholder="Rasm URL" value={courseForm.image_url} onChange={e => setCourseForm({ ...courseForm, image_url: e.target.value })} className="px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400" />
               <input placeholder="Narx (0=bepul)" type="number" min="0" value={courseForm.price} onChange={e => setCourseForm({ ...courseForm, price: e.target.value })} className="px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400" />
@@ -173,18 +174,18 @@ export default function AdminPage() {
             {courses.length === 0 && <div className="text-center py-16 text-slate-400">Hali kurs qo'shilmagan</div>}
             {courses.map(c => (
               <div key={c.id} className="card">
-                <div className="p-4 flex items-center gap-4">
-                  <img src={c.image_url || `https://picsum.photos/seed/${c.id}/80/80`} className="w-16 h-16 rounded-xl object-cover shrink-0" alt="" />
+                <div className="p-3 sm:p-4 flex items-center gap-3">
+                  <img src={c.image_url || `https://picsum.photos/seed/${c.id}/80/80`} className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl object-cover shrink-0" alt="" />
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-slate-900 truncate">{c.title}</p>
-                    <p className="text-sm text-slate-500">{Number(c.price) === 0 ? 'Bepul' : `${Number(c.price).toLocaleString()} so'm`} · {c.level} · {c.lessons?.length || 0} dars</p>
+                    <p className="font-bold text-slate-900 truncate text-sm sm:text-base">{c.title}</p>
+                    <p className="text-xs sm:text-sm text-slate-500">{Number(c.price) === 0 ? 'Bepul' : `${Number(c.price).toLocaleString()} so'm`} · {c.lessons?.length || 0} dars</p>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button onClick={() => startEditCourse(c)} className="btn-ghost px-3 py-2 text-sm"><Edit2 size={15} /> Tahrirlash</button>
-                    <button onClick={() => setOpenCourseId(openCourseId === c.id ? null : c.id)} className="btn-ghost px-3 py-2 text-sm">
-                      {openCourseId === c.id ? <ChevronUp size={15} /> : <ChevronDown size={15} />} Darslar
+                  <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                    <button onClick={() => startEditCourse(c)} className="p-2 text-blue-400 hover:bg-blue-50 rounded-xl transition-colors" title="Tahrirlash"><Edit2 size={16} /></button>
+                    <button onClick={() => setOpenCourseId(openCourseId === c.id ? null : c.id)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-xl transition-colors">
+                      {openCourseId === c.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                     </button>
-                    <button onClick={() => delCourse(c.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"><Trash2 size={18} /></button>
+                    <button onClick={() => delCourse(c.id)} className="p-2 text-red-400 hover:bg-red-50 rounded-xl transition-colors"><Trash2 size={16} /></button>
                   </div>
                 </div>
 
@@ -218,7 +219,7 @@ export default function AdminPage() {
                     {/* Yangi dars qo'shish */}
                     <form onSubmit={e => addLesson(e, c.id)} className="space-y-3">
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Yangi dars qo'shish</p>
-                      <div className="grid md:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <input required placeholder="Dars nomi *" value={lessonForm.title} onChange={e => setLessonForm({ ...lessonForm, title: e.target.value })} className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
                         <select value={lessonForm.lesson_type} onChange={e => setLessonForm({ ...lessonForm, lesson_type: e.target.value })} className="px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
                           <option value="video">▶ Video dars</option>
@@ -242,6 +243,14 @@ export default function AdminPage() {
                       {lessonForm.lesson_type === 'challenge' && (
                         <textarea placeholder="Mashq matni *" value={lessonForm.challenge} onChange={e => setLessonForm({ ...lessonForm, challenge: e.target.value })} rows={5} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
                       )}
+                      {/* Har qanday dars uchun ixtiyoriy mashq bo'limi */}
+                      {lessonForm.lesson_type !== 'challenge' && (
+                        <div className="border border-amber-200 bg-amber-50/50 rounded-xl p-3 space-y-2">
+                          <p className="text-xs font-bold text-amber-700 uppercase tracking-wider">⚡ Dars mashqi (ixtiyoriy)</p>
+                          <textarea placeholder="Mashq vazifasi — darsni tugatgandan keyin ko'rinadi" value={lessonForm.challenge} onChange={e => setLessonForm({ ...lessonForm, challenge: e.target.value })} rows={3} className="w-full px-3 py-2.5 rounded-xl border border-amber-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white" />
+                          <textarea placeholder="To'g'ri javob / namuna yechim — foydalanuvchi o'zi tekshiradi" value={(lessonForm as any).solution} onChange={e => setLessonForm({ ...lessonForm, solution: e.target.value } as any)} rows={3} className="w-full px-3 py-2.5 rounded-xl border border-amber-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white" />
+                        </div>
+                      )}
                       <button type="submit" className="btn-primary text-sm px-4 py-2.5"><Plus size={16} /> Dars qo'shish</button>
                     </form>
                   </div>
@@ -257,7 +266,7 @@ export default function AdminPage() {
         <div className="space-y-3">
           {enrollments.length === 0 && <div className="text-center py-16 text-slate-400">Hali so'rov yo'q</div>}
           {enrollments.map(e => (
-            <div key={e.id} className="card p-4 flex items-center gap-4">
+            <div key={e.id} className="card p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-brand-100 text-brand-700 font-bold text-sm grid place-items-center shrink-0">
                 {(e.user_name || e.user_email)?.slice(0, 2).toUpperCase()}
               </div>
@@ -286,36 +295,34 @@ export default function AdminPage() {
 
       {/* ===== FOYDALANUVCHILAR ===== */}
       {tab === 'users' && (
-        <div className="card overflow-hidden">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-slate-50 text-slate-500 font-bold">
-              <tr><th className="p-4">ID</th><th className="p-4">Ism</th><th className="p-4">Email</th><th className="p-4">Rol</th><th className="p-4">Sana</th></tr>
-            </thead>
-            <tbody>
-              {users.map(u => (
-                <tr key={u.id} className="border-t border-slate-100 hover:bg-slate-50 transition-colors">
-                  <td className="p-4 text-slate-400">{u.id}</td>
-                  <td className="p-4 font-semibold text-slate-800">{u.name}</td>
-                  <td className="p-4 text-slate-600">{u.email}</td>
-                  <td className="p-4"><span className={`px-3 py-1 rounded-lg text-xs font-bold ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600'}`}>{u.role}</span></td>
-                  <td className="p-4 text-slate-400 text-xs">{new Date(u.created_at).toLocaleDateString('uz-UZ')}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-2">
+          {users.map(u => (
+            <div key={u.id} className="card p-3 sm:p-4 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-slate-200 text-slate-600 text-sm font-bold grid place-items-center shrink-0">
+                {(u.name || u.email)?.slice(0, 2).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-slate-800 text-sm truncate">{u.name || '—'}</p>
+                <p className="text-xs text-slate-400 truncate">{u.email}</p>
+              </div>
+              <span className={`px-2.5 py-1 rounded-lg text-xs font-bold shrink-0 ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600'}`}>
+                {u.role}
+              </span>
+            </div>
+          ))}
         </div>
       )}
 
       {/* ===== DARS TAHRIRLASH MODAL ===== */}
       {editingLesson && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-slate-100">
-              <h2 className="font-extrabold text-xl text-slate-900">✏️ Darsni tahrirlash</h2>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[95vh] overflow-y-auto mx-2">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-100">
+              <h2 className="font-extrabold text-lg sm:text-xl text-slate-900">✏️ Darsni tahrirlash</h2>
               <button onClick={() => setEditingLesson(null)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors"><X size={20} /></button>
             </div>
-            <form onSubmit={saveLesson} className="p-6 space-y-4">
-              <div className="grid md:grid-cols-2 gap-4">
+            <form onSubmit={saveLesson} className="p-4 sm:p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <input required placeholder="Dars nomi *" value={editLessonForm.title} onChange={e => setEditLessonForm({ ...editLessonForm, title: e.target.value })} className="px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400" />
                 <select value={editLessonForm.lesson_type} onChange={e => setEditLessonForm({ ...editLessonForm, lesson_type: e.target.value })} className="px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400">
                   <option value="video">▶ Video dars</option>
@@ -339,6 +346,14 @@ export default function AdminPage() {
               )}
               {editLessonForm.lesson_type === 'challenge' && (
                 <textarea placeholder="Mashq matni *" value={editLessonForm.challenge} onChange={e => setEditLessonForm({ ...editLessonForm, challenge: e.target.value })} rows={6} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              )}
+              {/* Har qanday dars uchun ixtiyoriy mashq bo'limi */}
+              {editLessonForm.lesson_type !== 'challenge' && (
+                <div className="border border-amber-200 bg-amber-50/50 rounded-xl p-4 space-y-3">
+                  <p className="text-xs font-bold text-amber-700 uppercase tracking-wider">⚡ Dars mashqi (ixtiyoriy)</p>
+                  <textarea placeholder="Mashq vazifasi — darsni tugatgandan keyin ko'rinadi" value={editLessonForm.challenge} onChange={e => setEditLessonForm({ ...editLessonForm, challenge: e.target.value })} rows={3} className="w-full px-3 py-2.5 rounded-xl border border-amber-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white" />
+                  <textarea placeholder="To'g'ri javob / namuna yechim — foydalanuvchi o'zi tekshiradi" value={(editLessonForm as any).solution} onChange={e => setEditLessonForm({ ...editLessonForm, solution: e.target.value } as any)} rows={3} className="w-full px-3 py-2.5 rounded-xl border border-amber-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white" />
+                </div>
               )}
               <div className="flex gap-3 pt-2">
                 <button type="submit" className="btn-primary flex-1 py-3"><Save size={18} /> Saqlash</button>
