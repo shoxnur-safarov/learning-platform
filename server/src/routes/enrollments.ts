@@ -19,6 +19,38 @@ router.get('/my', authMiddleware, async (req: AuthRequest, res) => {
   }
 });
 
+// Har bir kurs uchun progress (tugagan darslar foizi)
+router.get('/my/progress', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT
+         c.id AS course_id,
+         COUNT(DISTINCT l.id)::int AS total,
+         COUNT(DISTINCT lc.lesson_id)::int AS completed
+       FROM enrollments e
+       JOIN courses c ON c.id = e.course_id
+       LEFT JOIN lessons l ON l.course_id = c.id
+       LEFT JOIN lesson_completions lc
+         ON lc.lesson_id = l.id AND lc.user_id = e.user_id
+       WHERE e.user_id = $1 AND e.status = 'approved'
+       GROUP BY c.id`,
+      [req.user!.id]
+    );
+    // { courseId: { total, completed, percent } }
+    const progress: Record<number, { total: number; completed: number; percent: number }> = {};
+    for (const row of result.rows) {
+      progress[row.course_id] = {
+        total: row.total,
+        completed: row.completed,
+        percent: row.total > 0 ? Math.round((row.completed / row.total) * 100) : 0
+      };
+    }
+    res.json(progress);
+  } catch (e: any) {
+    res.status(500).json({ error: 'Server xatosi' });
+  }
+});
+
 // Kursga so'rov yuborish (status = pending)
 router.post('/:courseId', authMiddleware, async (req: AuthRequest, res) => {
   const courseId = parseInt(req.params.courseId);

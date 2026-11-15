@@ -5,7 +5,13 @@ const router = Router();
 
 router.get('/', async (_req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM courses ORDER BY id DESC');
+    const result = await pool.query(`
+      SELECT c.*, COUNT(l.id)::int AS lesson_count
+      FROM courses c
+      LEFT JOIN lessons l ON l.course_id = c.id
+      GROUP BY c.id
+      ORDER BY c.id DESC
+    `);
     res.json(result.rows);
   } catch (e: any) {
     console.error('Kurslar xatosi:', e.message);
