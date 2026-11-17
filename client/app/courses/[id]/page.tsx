@@ -1,12 +1,21 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Clock, Lock, PlayCircle, CheckCircle2, Send, XCircle, BookOpen } from 'lucide-react';
+import { Clock, Lock, PlayCircle, CheckCircle2, Send, XCircle, BookOpen, GraduationCap, Bell } from 'lucide-react';
 import { api, Course } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
 
 type EnrollStatus = 'none' | 'pending' | 'approved' | 'rejected';
+
+const GRADIENTS = [
+  'from-brand-500 to-indigo-600',
+  'from-emerald-500 to-teal-600',
+  'from-amber-500 to-orange-600',
+  'from-purple-500 to-pink-600',
+  'from-sky-500 to-cyan-600',
+  'from-rose-500 to-red-600',
+];
 
 export default function CourseDetail() {
   const { id } = useParams<{ id: string }>();
@@ -16,18 +25,37 @@ export default function CourseDetail() {
   const [status, setStatus] = useState<EnrollStatus>('none');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  const [justApproved, setJustApproved] = useState(false);
+  const prevStatus = useRef<EnrollStatus>('none');
+  const pollRef = useRef<NodeJS.Timeout | null>(null);
+
+  const checkStatus = async () => {
+    if (!user || user.role === 'admin') return;
+    try {
+      const r = await api<{ status: string | null }>(`/enrollments/check/${id}`);
+      const s = (r.status as EnrollStatus) || 'none';
+      if (prevStatus.current === 'pending' && s === 'approved') {
+        setJustApproved(true);
+      }
+      prevStatus.current = s;
+      setStatus(s);
+    } catch {}
+  };
 
   useEffect(() => {
     api<Course>(`/courses/${id}`).then(setCourse).catch(() => {});
     if (user) {
       if (user.role === 'admin') {
-        setStatus('approved'); // Admin hamma kursni ko'ra oladi
+        setStatus('approved');
       } else {
-        api<{ status: string | null }>(`/enrollments/check/${id}`)
-          .then(r => setStatus((r.status as EnrollStatus) || 'none'))
-          .catch(() => {});
+        checkStatus();
+        // Har 8 soniyada tekshirish — pending bo'lsa
+        pollRef.current = setInterval(() => {
+          if (prevStatus.current === 'pending') checkStatus();
+        }, 8000);
       }
     }
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [id, user]);
 
   const sendRequest = async () => {
@@ -50,12 +78,30 @@ export default function CourseDetail() {
     </div>
   );
 
+  const grad = GRADIENTS[(course.id ?? 0) % GRADIENTS.length];
+  const initials = course.title.split(' ').slice(0, 2).map((w: string) => w[0]?.toUpperCase()).join('');
+
   return (
-    <div className="max-w-6xl mx-auto px-6 py-12 grid lg:grid-cols-[1fr_380px] gap-12">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-12 grid lg:grid-cols-[1fr_380px] gap-6 sm:gap-12">
+      {/* Real-time tasdiqlandi xabari */}
+      {justApproved && (
+        <div className="lg:col-span-2 bg-emerald-500 text-white px-5 py-3.5 rounded-2xl flex items-center gap-3 shadow-lg shadow-emerald-500/30 animate-pulse">
+          <Bell size={20} />
+          <span className="font-bold">🎉 Tabriklaymiz! Admin kursga kirishingizni tasdiqladi.</span>
+          <button onClick={() => setJustApproved(false)} className="ml-auto text-white/70 hover:text-white text-xl leading-none">×</button>
+        </div>
+      )}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="rounded-3xl overflow-hidden mb-8 aspect-video shadow-lg bg-slate-100">
-          <img src={course.image_url || `https://picsum.photos/seed/${course.id}/1200/600`}
-            className="w-full h-full object-cover" alt={course.title} />
+        <div className="rounded-3xl overflow-hidden mb-6 sm:mb-8 aspect-video shadow-lg bg-slate-100">
+          {course.image_url ? (
+            <img src={course.image_url} className="w-full h-full object-cover" alt={course.title}
+              onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+          ) : (
+            <div className={`w-full h-full bg-gradient-to-br ${grad} flex flex-col items-center justify-center gap-4`}>
+              <GraduationCap size={56} className="text-white/70" />
+              <span className="text-white font-extrabold text-4xl tracking-wide opacity-80">{initials}</span>
+            </div>
+          )}
         </div>
         <span className="inline-block px-4 py-1.5 rounded-full bg-brand-100 text-brand-700 text-xs font-bold uppercase tracking-wider">
           {course.level}

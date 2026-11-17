@@ -156,14 +156,27 @@ export default function AdminPage() {
             <h2 className="font-bold text-base sm:text-lg">{editingCourse ? '✏️ Kursni tahrirlash' : '➕ Yangi kurs'}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <input required placeholder="Kurs nomi *" value={courseForm.title} onChange={e => setCourseForm({ ...courseForm, title: e.target.value })} className="px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400" />
-              <input placeholder="Rasm URL" value={courseForm.image_url} onChange={e => setCourseForm({ ...courseForm, image_url: e.target.value })} className="px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400" />
-              <input placeholder="Narx (0=bepul)" type="number" min="0" value={courseForm.price} onChange={e => setCourseForm({ ...courseForm, price: e.target.value })} className="px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400" />
               <select value={courseForm.level} onChange={e => setCourseForm({ ...courseForm, level: e.target.value })} className="px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400">
                 <option>Boshlang'ich</option><option>O'rta</option><option>Yuqori</option>
               </select>
-              <input placeholder="Davomiylik (soat)" type="number" min="0" value={courseForm.duration_hours} onChange={e => setCourseForm({ ...courseForm, duration_hours: e.target.value })} className="px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-slate-500 px-1">💰 Narx (so'm, 0 = bepul)</span>
+                <input type="number" min="0" value={courseForm.price} onChange={e => setCourseForm({ ...courseForm, price: e.target.value })} className="px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-slate-500 px-1">⏱️ Davomiylik (soat)</span>
+                <input type="number" min="0" value={courseForm.duration_hours} onChange={e => setCourseForm({ ...courseForm, duration_hours: e.target.value })} className="px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              </label>
+              <input placeholder="Kurs rasmi URL (https://...)" value={courseForm.image_url} onChange={e => setCourseForm({ ...courseForm, image_url: e.target.value })} className="sm:col-span-2 px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400" />
             </div>
-            <textarea required placeholder="Tavsif *" value={courseForm.description} onChange={e => setCourseForm({ ...courseForm, description: e.target.value })} rows={3} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+            {/* Rasm preview */}
+            {courseForm.image_url && (
+              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <img src={courseForm.image_url} alt="" className="w-16 h-12 object-cover rounded-lg" onError={e => { (e.target as HTMLImageElement).style.opacity = '0.3'; }} />
+                <span className="text-xs text-slate-500">Rasm ko'rinishi</span>
+              </div>
+            )}
+            <textarea required placeholder="Kurs tavsifi *" value={courseForm.description} onChange={e => setCourseForm({ ...courseForm, description: e.target.value })} rows={3} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400" />
             <div className="flex gap-3">
               <button type="submit" className="btn-primary"><Plus size={18} /> {editingCourse ? 'Saqlash' : 'Qo\'shish'}</button>
               {editingCourse && <button type="button" onClick={() => { setEditingCourse(null); setCourseForm(emptyCourse); }} className="btn-ghost">Bekor</button>}

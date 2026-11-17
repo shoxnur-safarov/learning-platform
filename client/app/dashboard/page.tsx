@@ -1,8 +1,8 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { PlayCircle, BookOpen, Clock, TrendingUp, Award, ChevronRight, CheckCircle2, Zap } from 'lucide-react';
+import { PlayCircle, BookOpen, Clock, TrendingUp, Award, ChevronRight, CheckCircle2, Zap, Bell } from 'lucide-react';
 import { api, Course } from '@/lib/api';
 import { useAuth } from '@/components/AuthProvider';
 
@@ -34,16 +34,40 @@ export default function Dashboard() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [progress, setProgress] = useState<Progress>({});
   const [progressLoading, setProgressLoading] = useState(true);
+  const [newApprovals, setNewApprovals] = useState<string[]>([]);
+  const prevPending = useRef<number[]>([]);
+  const pollRef = useRef<NodeJS.Timeout | null>(null);
+
+  const refreshCourses = async () => {
+    try {
+      const updated = await api<Course[]>('/enrollments/my');
+      setCourses(prev => {
+        // Yangi tasdiqlangan kurslarni aniqlash
+        const prevPendingIds = prev.filter(c => (c as any).status === 'pending').map(c => c.id);
+        const newlyApproved = updated.filter(c =>
+          (c as any).status === 'approved' && prevPendingIds.includes(c.id)
+        );
+        if (newlyApproved.length > 0) {
+          setNewApprovals(newlyApproved.map(c => c.title));
+        }
+        return updated;
+      });
+    } catch {}
+  };
 
   useEffect(() => {
     if (!loading && !user) router.push('/login');
     if (user) {
-      api<Course[]>('/enrollments/my').then(setCourses).catch(() => {});
+      refreshCourses();
       api<Progress>('/enrollments/my/progress')
         .then(setProgress)
         .catch(() => {})
         .finally(() => setProgressLoading(false));
+
+      // Har 10 soniyada polling
+      pollRef.current = setInterval(refreshCourses, 10000);
     }
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [user, loading, router]);
 
   if (loading || !user) return (
@@ -131,11 +155,19 @@ export default function Dashboard() {
                 <div key={c.id} className="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-xl hover:shadow-slate-200/80 hover:-translate-y-1 transition-all duration-300">
                   {/* Rasm */}
                   <div className="relative aspect-video overflow-hidden bg-slate-100">
-                    <img
-                      src={(c as any).image_url || `https://picsum.photos/seed/${c.id}/600/340`}
-                      alt={c.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
+                    {(c as any).image_url ? (
+                      <img
+                        src={(c as any).image_url}
+                        alt={c.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className={`w-full h-full bg-gradient-to-br ${['from-brand-500 to-indigo-600','from-emerald-500 to-teal-600','from-amber-500 to-orange-600','from-purple-500 to-pink-600'][c.id % 4]} flex items-center justify-center`}>
+                        <span className="text-white font-extrabold text-3xl opacity-60">
+                          {c.title.slice(0,2).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                     {/* Progress ring ustida */}
                     <div className="absolute bottom-3 right-3 bg-white rounded-full p-0.5 shadow-lg">
